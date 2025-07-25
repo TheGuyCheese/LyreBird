@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 254 250 224; /* #FEFAE0 */
+    --foreground: 10 64 12; /* #0A400C */
+    --card: 254 250 224; /* #FEFAE0 */
+    --card-foreground: 10 64 12; /* #0A400C */
+    --popover: 254 250 224; /* #FEFAE0 */
+    --popover-foreground: 10 64 12; /* #0A400C */
+    --primary: 10 64 12; /* #0A400C */
+    --primary-foreground: 254 250 224; /* #FEFAE0 */
+    --secondary: 129 144 103; /* #819067 */
+    --secondary-foreground: 254 250 224; /* #FEFAE0 */
+    --muted: 177 171 134; /* #B1AB86 */
+    --muted-foreground: 10 64 12; /* #0A400C */
+    --accent: 177 171 134; /* #B1AB86 */
+    --accent-foreground: 10 64 12; /* #0A400C */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 177 171 134; /* #B1AB86 */
+    --input: 177 171 134; /* #B1AB86 */
+    --ring: 10 64 12; /* #0A400C */
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+.container {
+  @apply mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #FEFAE0 0%, #B1AB86 100%);
+}
+
+.glass-effect {
+  backdrop-filter: blur(10px);
+  background: rgba(254, 250, 224, 0.8);
+  border: 1px solid rgba(177, 171, 134, 0.3);
+} 
