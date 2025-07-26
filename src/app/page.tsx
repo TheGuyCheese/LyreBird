@@ -67,7 +67,7 @@ const testimonials = [
   {
     name: 'Sarah Johnson',
     role: 'Spanish Learner',
-    content: 'LinguaLearn transformed my language learning journey! The AI conversations feel so natural.',
+    content: 'LyreBird transformed my language learning journey! The AI conversations feel so natural.',
     rating: 5,
     avatar: '👩‍💼'
   },
@@ -135,7 +135,7 @@ export default function LandingPage() {
 
   if (isSignedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cream-white to-sand-beige flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#B9B38F'}}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg text-muted-foreground">Redirecting to your dashboard...</p>
@@ -145,7 +145,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream-white to-sand-beige">
+    <div className="min-h-screen" style={{backgroundColor: '#B9B38F'}}>
       {/* Navigation */}
       <nav className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center">
@@ -153,7 +153,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
               <Brain className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold text-primary">LinguaLearn</span>
+            <span className="text-2xl font-bold text-primary">LyreBird</span>
           </div>
           
           <div className="flex space-x-4">
@@ -230,7 +230,7 @@ export default function LandingPage() {
           className="text-center mb-16"
         >
           <motion.h2 variants={itemVariants} className="text-4xl font-bold text-primary mb-4">
-            Why Choose LinguaLearn?
+            Why Choose LyreBird?
           </motion.h2>
           <motion.p variants={itemVariants} className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Our cutting-edge features make language learning more effective, engaging, and enjoyable than ever before.
@@ -324,7 +324,7 @@ export default function LandingPage() {
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-primary mb-4">What Our Learners Say</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of successful language learners who have transformed their lives with LinguaLearn.
+            Join thousands of successful language learners who have transformed their lives with LyreBird.
           </p>
         </div>
 
@@ -395,7 +395,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 bg-cream-white rounded-xl flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary" />
                 </div>
-                <span className="text-xl font-bold">LinguaLearn</span>
+                <span className="text-xl font-bold">LyreBird</span>
               </div>
               <p className="text-cream-white/80 mb-4">
                 The future of language learning is here. Master any language with AI-powered conversations and interactive learning.
@@ -434,7 +434,7 @@ export default function LandingPage() {
           </div>
           
           <div className="border-t border-cream-white/20 mt-8 pt-8 text-center text-cream-white/60">
-            <p>&copy; 2024 LinguaLearn. All rights reserved.</p>
+            <p>&copy; 2024 LyreBird. All rights reserved.</p>
           </div>
         </div>
       </footer>
