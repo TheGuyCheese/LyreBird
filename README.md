@@ -1,4 +1,4 @@
-# LinguaLearn - AI-Powered Language Learning Platform
+# LyreBird - AI-Powered Language Learning Platform
 
 A modern, interactive language learning web application built with Next.js 14, featuring AI-powered conversations, 3D interactive learning, and gamified progress tracking.
 

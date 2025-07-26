@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    --background: 254 250 224; /* #FEFAE0 */
+    --background: 185 179 143; /* #B9B38F */
     --foreground: 10 64 12; /* #0A400C */
     --card: 254 250 224; /* #FEFAE0 */
     --card-foreground: 10 64 12; /* #0A400C */
@@ -35,6 +35,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
+    background-color: #B9B38F !important;
+  }
+  
+  html {
+    background-color: #B9B38F;
   }
 }
 

@@ -1,63 +1,219 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import React, { useRef, useEffect, useState } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import * as THREE from 'three';
 
+// Map viseme phonemes to Oculus Viseme morph target names
+const visemeMap: { [key: string]: string } = {
+  'sil': 'viseme_sil',    // Silence
+  'PP': 'viseme_PP',      // p, b, m
+  'FF': 'viseme_FF',      // f, v
+  'TH': 'viseme_TH',      // th
+  'DD': 'viseme_DD',      // d, t, n, l
+  'kk': 'viseme_kk',      // k, g
+  'CH': 'viseme_CH',      // ch, j, sh, zh
+  'SS': 'viseme_SS',      // s, z
+  'nn': 'viseme_nn',      // n, ng
+  'RR': 'viseme_RR',      // r
+  'aa': 'viseme_aa',      // a (cat)
+  'E': 'viseme_E',        // e (bed)
+  'I': 'viseme_I',        // i (bit)
+  'O': 'viseme_O',        // o (hot)
+  'U': 'viseme_U',        // u (book)
+};
+
+// Define types for viseme data
+type Viseme = {
+  start: number;
+  end: number;
+  value: string;
+};
+
+// Helper component to handle the GLB model and its lip-sync animation
+const Avatar = ({ audio, visemes }: { audio: HTMLAudioElement | null; visemes: Viseme[] | null }) => {
+  const modelRef = useRef<THREE.Group>(null);
+  const [modelLoaded, setModelLoaded] = useState(false);
+  const [headMesh, setHeadMesh] = useState<THREE.SkinnedMesh | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
+  // Load the GLB model
+  const gltf = useLoader(GLTFLoader, '/avatars/male_avatar.glb');
+
+  useEffect(() => {
+    if (gltf && gltf.scene) {
+      setModelLoaded(true);
+      console.log('GLB Model loaded:', gltf.scene);
+      
+      // Find mesh with morph targets for lip-sync
+      gltf.scene.traverse((child) => {
+        
+        // Find mesh with morph targets for lip-sync
+        if (child instanceof THREE.SkinnedMesh && child.morphTargetDictionary) {
+          console.log('Found mesh with morph targets:', child.name);
+          console.log('Available morph targets:', Object.keys(child.morphTargetDictionary));
+          setHeadMesh(child);
+        }
+      });
+    }
+  }, [gltf]);
+
+  // Track audio playing state
+  useEffect(() => {
+    if (!audio) return;
+
+    const handlePlay = () => setIsAudioPlaying(true);
+    const handlePause = () => setIsAudioPlaying(false);
+    const handleEnded = () => setIsAudioPlaying(false);
+
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [audio]);
+
+  // Animate the model with swaying and lip movement
+  useFrame(({ clock }) => {
+    if (!modelLoaded || !modelRef.current) return;
+
+    const time = clock.getElapsedTime();
+
+    // Swaying animation when not speaking
+    if (!isAudioPlaying) {
+      // Gentle swaying motion
+      modelRef.current.rotation.y = Math.sin(time * 0.5) * 0.05; // Side to side sway
+      modelRef.current.rotation.z = Math.cos(time * 0.3) * 0.02; // Slight tilt
+      modelRef.current.position.x = Math.sin(time * 0.4) * 0.02; // Subtle side movement
+      
+      // Reset mouth to neutral when not speaking
+      if (headMesh?.morphTargetDictionary && headMesh?.morphTargetInfluences) {
+        Object.values(visemeMap).forEach(visemeName => {
+          const index = headMesh.morphTargetDictionary![visemeName];
+          if (index !== undefined && headMesh.morphTargetInfluences) {
+            headMesh.morphTargetInfluences[index] = 0;
+          }
+        });
+      }
+    } else {
+      // Reset position and rotation when speaking
+      modelRef.current.rotation.y = 0;
+      modelRef.current.rotation.z = 0;
+      modelRef.current.position.x = 0;
+
+      // Basic mouth movement during speech
+      if (headMesh?.morphTargetDictionary && headMesh?.morphTargetInfluences) {
+        // Reset all visemes first
+        Object.values(visemeMap).forEach(visemeName => {
+          const index = headMesh.morphTargetDictionary![visemeName];
+          if (index !== undefined && headMesh.morphTargetInfluences) {
+            headMesh.morphTargetInfluences[index] = 0;
+          }
+        });
+
+        // If we have proper viseme data, use it
+        if (audio && visemes) {
+          const currentTime = audio.currentTime;
+          const currentViseme = visemes.find(v => currentTime >= v.start && currentTime <= v.end);
+          
+          if (currentViseme) {
+            const visemeName = visemeMap[currentViseme.value] || visemeMap['sil'];
+            const index = headMesh.morphTargetDictionary[visemeName];
+            if (index !== undefined && headMesh.morphTargetInfluences) {
+              headMesh.morphTargetInfluences[index] = 0.8;
+            }
+          }
+        } else {
+          // Basic mouth movement without specific visemes
+          const mouthMovement = Math.abs(Math.sin(time * 8)) * 0.6;
+          const aaIndex = headMesh.morphTargetDictionary['viseme_aa'];
+          const eIndex = headMesh.morphTargetDictionary['viseme_E'];
+          
+          if (aaIndex !== undefined && headMesh.morphTargetInfluences) {
+            headMesh.morphTargetInfluences[aaIndex] = mouthMovement;
+          }
+          if (eIndex !== undefined && headMesh.morphTargetInfluences) {
+            headMesh.morphTargetInfluences[eIndex] = mouthMovement * 0.5;
+          }
+        }
+      }
+    }
+  });
+
+  return gltf ? (
+    <primitive 
+      object={gltf.scene} 
+      ref={modelRef} 
+      scale={[3.5, 3.5, 3.5]} 
+      position={[0, -5.7, 0]} // Same position as StaticAvatar
+      rotation={[0, 0, 0]}
+    />
+  ) : null;
+};
+
+// Fallback component for when no audio/visemes are available
+const StaticAvatar = () => {
+  const modelRef = useRef<THREE.Group>(null);
+  const gltf = useLoader(GLTFLoader, '/avatars/male_avatar.glb');
+  
+  // Add swaying animation for static avatar
+  useFrame(({ clock }) => {
+    if (!modelRef.current) return;
+
+    const time = clock.getElapsedTime();
+    
+    // Gentle swaying motion
+    modelRef.current.rotation.y = Math.sin(time * 0.5) * 0.05; // Side to side sway
+    modelRef.current.rotation.z = Math.cos(time * 0.3) * 0.02; // Slight tilt
+    modelRef.current.position.x = Math.sin(time * 0.4) * 0.02; // Subtle side movement
+  });
+  
+  return gltf ? (
+    <primitive 
+      object={gltf.scene} 
+      ref={modelRef}
+      scale={[3.5, 3.5, 3.5]} 
+      position={[0, -5.7, 0]} // moved down
+      rotation={[0, 0, 0]}
+    />
+  ) : null;
+};
+
+// Main Scene Component
 interface LearningSceneProps {
-  selectedLanguage: string
-  onObjectClick: (obj: any) => void
+  audio?: HTMLAudioElement | null;
+  visemes?: Viseme[] | null;
 }
 
-// Main interactive scene component
-function InteractiveScene({ onObjectClick }: { onObjectClick: (obj: any) => void }) {
-  const objects = [
-    { id: 'apple', position: 'top-8 left-8', color: 'bg-red-400', name: 'Apple', emoji: '🍎' },
-    { id: 'car', position: 'top-8 left-1/2 transform -translate-x-1/2', color: 'bg-blue-400', name: 'Car', emoji: '🚗' },
-    { id: 'house', position: 'top-8 right-8', color: 'bg-green-400', name: 'House', emoji: '🏠' },
-    { id: 'coffee', position: 'bottom-16 left-16', color: 'bg-amber-400', name: 'Coffee', emoji: '☕' },
-    { id: 'shirt', position: 'bottom-16 right-16', color: 'bg-purple-400', name: 'Shirt', emoji: '👕' },
-    { id: 'book', position: 'top-1/2 left-4 transform -translate-y-1/2', color: 'bg-indigo-400', name: 'Book', emoji: '📚' },
-    { id: 'phone', position: 'top-1/2 right-4 transform -translate-y-1/2', color: 'bg-pink-400', name: 'Phone', emoji: '📱' },
-  ]
-
+export const LearningScene: React.FC<LearningSceneProps> = ({ audio, visemes }) => {
   return (
-    <div className="w-full h-full relative bg-gradient-to-br from-[#FEFAE0] to-[#B1AB86] rounded-lg overflow-hidden">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#0A400C] rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-[#819067] rounded-full blur-3xl"></div>
-      </div>
+    <Canvas 
+      camera={{ 
+        position: [0, -0.1, 2], // Front-facing at head level, looking straight at the avatar
+        fov: 50, // Very narrow field of view for tight passport crop
+        near: 0.3,
+        far: 75
+      }}
+    >
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[2, 4, 2]} intensity={1.2} />
+      <pointLight position={[-1, 2, 1]} intensity={0.6} />
+      <spotLight position={[0, 3, 1.5]} intensity={0.8} angle={0.5} penumbra={0.2} />
       
-      {/* Interactive objects */}
-      {objects.map((obj) => (
-        <div
-          key={obj.id}
-          className={`absolute ${obj.position} w-20 h-20 ${obj.color} rounded-2xl cursor-pointer transform transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-black/20 flex items-center justify-center text-3xl group border-2 border-white/20`}
-          onClick={() => onObjectClick(obj)}
-        >
-          <span className="group-hover:scale-125 transition-transform duration-200 drop-shadow-sm">{obj.emoji}</span>
-          <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 text-white px-3 py-1 rounded-md text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-medium">
-            {obj.name}
-          </div>
-        </div>
-      ))}
+      {audio && visemes ? (
+        <Avatar audio={audio} visemes={visemes} />
+      ) : (
+        <StaticAvatar />
+      )}
       
-      {/* Instructions */}
-      <div className="absolute bottom-4 left-4 text-[#0A400C] text-sm opacity-70 bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm">
-        Click on objects to learn vocabulary
-      </div>
-      
-      {/* Decorative elements */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-[#0A400C] font-semibold text-lg opacity-80">
-        Language Learning Lab
-      </div>
-    </div>
-  )
-}
 
-export default function LearningScene({ selectedLanguage, onObjectClick }: LearningSceneProps) {
-  return (
-    <div className="w-full h-full relative">
-      <InteractiveScene onObjectClick={onObjectClick} />
-    </div>
-  )
-} 
+    </Canvas>
+  );
+};
+
+export default LearningScene; 

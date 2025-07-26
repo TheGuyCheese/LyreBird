@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { auth } from '@clerk/nextjs/server'
+import { vectorRAGStore, generateContextSummary } from '@/lib/vector-rag'
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '')
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const authResult = await auth()
+    const userId = authResult?.userId
+    
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          response: 'Please sign in to use the AI chat feature.',
+          translation: 'Please sign in to use the AI chat feature.',
+          corrections: [],
+          suggestions: ['Sign in to continue the conversation']
+        },
+        { status: 401 }
+      )
+    }
+
     // Check if Gemini API key is configured
     if (!process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY === 'placeholder_gemini_api_key_replace_with_real_key') {
       return NextResponse.json(
@@ -18,7 +36,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { message, language, userLanguage, topic, level, conversationHistory } = await request.json()
+    const { message, language, userLanguage, topic, level, sessionId } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
@@ -42,6 +60,23 @@ export async function POST(request: NextRequest) {
     const targetLanguage = languageNames[language] || 'Spanish'
     const originalLanguage = languageNames[userLanguage || 'english'] || 'English'
     
+    // Store user message first
+    const userMessage = await vectorRAGStore.storeMessage({
+      user_id: userId,
+      session_id: sessionId || 'default',
+      role: 'user',
+      content: message,
+      metadata: {
+        language,
+        topic,
+        level
+      }
+    })
+
+    // Get relevant context from chat history using RAG
+    const relevantContext = await vectorRAGStore.getRelevantContext(userId, message, 8)
+    const contextSummary = generateContextSummary(relevantContext)
+    
     // Create context based on topic and level
     const topicContext = {
       introductions: 'introductions, meeting new people, personal information, greetings, and basic conversation starters',
@@ -56,16 +91,14 @@ export async function POST(request: NextRequest) {
       advanced: 'Use sophisticated vocabulary, complex grammar structures, and discuss nuanced topics. Challenge the learner appropriately.'
     }
 
-    // Build conversation history context
-    const historyContext = conversationHistory
-      .map((msg: any) => `${msg.role === 'user' ? 'Student' : 'Tutor'}: ${msg.content}`)
-      .join('\n')
-
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
     const prompt = `You are an AI language tutor specializing in ${targetLanguage}. You are having a conversation with a ${level} level student about ${topicContext[topic as keyof typeof topicContext] || 'general conversation'}.
 
 The student's native language is ${originalLanguage}, and they are learning ${targetLanguage}.
+
+IMPORTANT CONTEXT FROM PREVIOUS CONVERSATIONS:
+${contextSummary}
 
 INSTRUCTIONS:
 1. Respond primarily in ${targetLanguage} (this will be your main response)
@@ -76,9 +109,8 @@ INSTRUCTIONS:
 6. Include cultural context when relevant
 7. Focus on practical, real-world language use
 8. Provide a translation of your response in ${originalLanguage} for the student's understanding
-
-CONVERSATION HISTORY:
-${historyContext}
+9. Use the previous conversation context to maintain continuity and refer back to topics discussed earlier
+10. If this is a continuation of a previous conversation, acknowledge what was discussed before
 
 STUDENT'S LATEST MESSAGE: ${message}
 
@@ -133,6 +165,20 @@ IMPORTANT: Respond ONLY with valid JSON in exactly this format (no additional te
         suggestions: []
       }
     }
+
+    // Store assistant message
+    await vectorRAGStore.storeMessage({
+      user_id: userId,
+      session_id: sessionId || 'default',
+      role: 'assistant',
+      content: parsedResponse.response,
+      metadata: {
+        language,
+        topic,
+        level,
+        translation: parsedResponse.translation
+      }
+    })
 
     return NextResponse.json(parsedResponse, {
       headers: {

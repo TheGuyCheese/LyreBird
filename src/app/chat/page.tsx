@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UserButton, useUser } from '@clerk/nextjs'
+import { useUser, UserButton } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,9 +36,23 @@ import {
   FileText,
   Zap,
   Menu,
-  X
+  X,
+  Plus,
+  Trash2,
+  History,
+  Clock
 } from 'lucide-react'
 import { languages, getLanguageByCode } from '@/lib/utils'
+import { vectorRAGStore, generateContextSummary } from '@/lib/vector-rag'
+import { ChatSession, ChatMessage } from '@/lib/supabase'
+import { LearningScene } from '@/components/LearningScene'
+
+// Define viseme type
+type Viseme = {
+  start: number;
+  end: number;
+  value: string;
+}
 
 interface Message {
   id: string
@@ -118,14 +132,24 @@ export default function ChatPage() {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedTopic, setSelectedTopic] = useState<ConversationTopic | null>(null)
-  const [conversationLevel, setConversationLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
+  const [selectedLevel, setSelectedLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
   const [isListening, setIsListening] = useState(false)
   const [corrections, setCorrections] = useState<string[]>([])
   const [isVoiceMuted, setIsVoiceMuted] = useState(false)
   const [isTopicsMenuOpen, setIsTopicsMenuOpen] = useState(false)
-  const [userLanguage, setUserLanguage] = useState('english') // Track user's original language
+  const [userLanguage, setUserLanguage] = useState('english')
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // New state for 3D avatar and lip-syncing
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
+  const [currentVisemes, setCurrentVisemes] = useState<Viseme[] | null>(null)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
     if (isLoaded && !user) {
@@ -142,6 +166,13 @@ export default function ChatPage() {
       initializeConversation(selectedTopic)
     }
   }, [selectedTopic, selectedLanguage])
+
+  // Load chat sessions on component mount
+  useEffect(() => {
+    if (user) {
+      loadChatSessions()
+    }
+  }, [user])
 
   // Load preferences from localStorage
   useEffect(() => {
@@ -170,6 +201,92 @@ export default function ChatPage() {
     localStorage.setItem('userLanguage', userLanguage)
   }, [userLanguage])
 
+  const loadChatSessions = async () => {
+    setIsLoadingSessions(true)
+    try {
+      const response = await fetch('/api/chat/history')
+      if (response.ok) {
+        const data = await response.json()
+        setChatSessions(data.sessions || [])
+      }
+    } catch (error) {
+      console.error('Error loading chat sessions:', error)
+    } finally {
+      setIsLoadingSessions(false)
+    }
+  }
+
+  const createNewSession = async () => {
+    try {
+      const response = await fetch('/api/chat/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `${getLanguageByCode(selectedLanguage).name} Chat - ${new Date().toLocaleDateString()}`
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const newSession = data.session
+        setChatSessions(prev => [newSession, ...prev])
+        setCurrentSessionId(newSession.id)
+        setMessages([])
+        setCorrections([])
+      }
+    } catch (error) {
+      console.error('Error creating new session:', error)
+    }
+  }
+
+  const loadSession = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/chat/history/${sessionId}`)
+      if (response.ok) {
+        const data = await response.json()
+        const sessionMessages = data.messages || []
+        
+        // Convert RAG messages to UI messages
+        const uiMessages: Message[] = sessionMessages.map((msg: ChatMessage) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          translation: msg.metadata?.translation,
+          timestamp: new Date(msg.created_at),
+          corrections: [],
+          suggestions: []
+        }))
+        
+        setMessages(uiMessages)
+        setCurrentSessionId(sessionId)
+        setIsHistoryOpen(false)
+      }
+    } catch (error) {
+      console.error('Error loading session:', error)
+    }
+  }
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/chat/history/${sessionId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setChatSessions(prev => prev.filter(session => session.id !== sessionId))
+        if (currentSessionId === sessionId) {
+          setCurrentSessionId(null)
+          setMessages([])
+          setCorrections([])
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error)
+    }
+  }
+
   const initializeConversation = (topic: ConversationTopic) => {
     const welcomeMessage: Message = {
       id: Date.now().toString(),
@@ -178,7 +295,7 @@ export default function ChatPage() {
       timestamp: new Date()
     }
     setMessages([welcomeMessage])
-    setCorrections([]) // Clear any existing corrections
+    setCorrections([])
   }
 
   const sendMessage = async (message: string) => {
@@ -204,10 +321,10 @@ export default function ChatPage() {
         body: JSON.stringify({
           message,
           language: selectedLanguage,
-          userLanguage: userLanguage, // Send user's original language
+          userLanguage: userLanguage,
           topic: selectedTopic?.id,
-          level: conversationLevel,
-          conversationHistory: messages.slice(-5) // Send last 5 messages for context
+          level: selectedLevel,
+          sessionId: currentSessionId || 'default'
         }),
       })
 
@@ -215,7 +332,6 @@ export default function ChatPage() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Check if response is JSON
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Response is not JSON')
@@ -223,7 +339,6 @@ export default function ChatPage() {
 
       const data = await response.json()
       
-      // Validate the response structure
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid response format')
       }
@@ -232,7 +347,7 @@ export default function ChatPage() {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.response || 'I received your message but couldn\'t generate a proper response.',
-        translation: data.translation || undefined, // Add translation field
+        translation: data.translation || undefined,
         timestamp: new Date(),
         corrections: Array.isArray(data.corrections) ? data.corrections : [],
         suggestions: Array.isArray(data.suggestions) ? data.suggestions : []
@@ -240,6 +355,16 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, assistantMessage])
       setCorrections(Array.isArray(data.corrections) ? data.corrections : [])
+      
+      // Speak the AI response with lip-sync
+      if (data.response && !isVoiceMuted) {
+        setTimeout(() => {
+          speakWithLipSync(data.response)
+        }, 500) // Small delay to let UI update
+      }
+      
+      // Reload sessions to update the session list
+      loadChatSessions()
     } catch (error) {
       console.error('Error sending message:', error)
       
@@ -265,21 +390,78 @@ export default function ChatPage() {
     }
   }
 
-  const speakMessage = (text: string) => {
-    if ('speechSynthesis' in window && !isVoiceMuted) {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = selectedLanguage === 'spanish' ? 'es-ES' : 
-                      selectedLanguage === 'french' ? 'fr-FR' : 
-                      selectedLanguage === 'german' ? 'de-DE' : 'en-US'
-      utterance.rate = 0.8
-      speechSynthesis.speak(utterance)
+  // Text-to-speech with lip-sync function
+  const speakWithLipSync = async (text: string) => {
+    try {
+      setIsSpeaking(true)
+      
+      // Get viseme data from our API
+      const visemeResponse = await fetch('/api/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      })
+      
+      if (visemeResponse.ok) {
+        const { visemes, duration, debug } = await visemeResponse.json()
+        console.log('Received visemes:', visemes?.length, 'Duration:', duration)
+        console.log('Debug info:', debug)
+        setCurrentVisemes(visemes)
+        
+        // Use Web Speech API for actual speech synthesis
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(text)
+          
+          // Configure speech settings
+          utterance.rate = 0.9
+          utterance.pitch = 1.0
+          utterance.volume = 0.8
+          
+          // Try to use a female voice if available
+          const voices = speechSynthesis.getVoices()
+          const femaleVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes('female') || 
+            voice.name.toLowerCase().includes('zira') ||
+            voice.name.toLowerCase().includes('aria')
+          )
+          if (femaleVoice) utterance.voice = femaleVoice
+          
+          // Create a fake audio element for timing sync
+          const fakeAudio = new Audio()
+          fakeAudio.currentTime = 0
+          
+          let startTime = Date.now()
+          const updateCurrentTime = () => {
+            if (isSpeaking) {
+              fakeAudio.currentTime = (Date.now() - startTime) / 1000
+              requestAnimationFrame(updateCurrentTime)
+            }
+          }
+          
+          utterance.onstart = () => {
+            startTime = Date.now()
+            setCurrentAudio(fakeAudio)
+            updateCurrentTime()
+          }
+          
+          utterance.onend = () => {
+            setIsSpeaking(false)
+            setCurrentAudio(null)
+            setCurrentVisemes(null)
+          }
+          
+          speechSynthesis.speak(utterance)
+        }
+      }
+    } catch (error) {
+      console.error('Error with text-to-speech:', error)
+      setIsSpeaking(false)
     }
   }
 
   const toggleVoiceMute = () => {
     const newMutedState = !isVoiceMuted
     setIsVoiceMuted(newMutedState)
-    // Save preference to localStorage
     localStorage.setItem('voiceMuted', JSON.stringify(newMutedState))
   }
 
@@ -323,7 +505,6 @@ export default function ChatPage() {
   const clearConversation = () => {
     setMessages([])
     setCorrections([])
-    // Don't clear the selected topic - keep it for easy restart
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -335,7 +516,7 @@ export default function ChatPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cream-white to-sand-beige flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#B9B38F'}}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg text-muted-foreground">Loading your AI chat...</p>
@@ -345,17 +526,17 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream-white to-sand-beige">
+    <div className="min-h-screen flex flex-col" style={{backgroundColor: '#B9B38F'}}>
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-sand-beige/20 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-sand-beige/20 sticky top-0 z-50 flex-shrink-0">
+        <div className="w-full px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <span className="text-xl font-bold text-primary">LinguaLearn</span>
+                <span className="text-xl font-bold text-primary">LyreBird</span>
               </div>
               
               <nav className="hidden md:flex space-x-6">
@@ -448,16 +629,110 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-            {/* Chat Area - Left Side */}
-            <div className="lg:col-span-2 h-full flex flex-col min-h-0">
-              <Card className="h-full flex flex-col overflow-hidden">
-                <CardHeader className="flex-shrink-0 border-b border-sand-beige/20">
+      {/* Main Content - Full Screen */}
+      <main className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 w-full p-2">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 h-[calc(100vh-88px)]">
+            {/* Chat History Sidebar */}
+            <div className={`lg:col-span-1 ${isHistoryOpen ? 'block' : 'hidden lg:block'} h-full`}>
+              <Card className="h-full flex flex-col shadow-lg">
+                <CardHeader className="flex-shrink-0 pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center">
+                      <History className="w-5 h-5 mr-2" />
+                      Chat History
+                    </CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={createNewSession}
+                      className="lg:hidden"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={createNewSession}
+                    className="hidden lg:flex w-full justify-center"
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Chat
+                  </Button>
+                </CardHeader>
+                
+                <CardContent className="flex-1 overflow-y-auto p-0">
+                  {isLoadingSessions ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : chatSessions.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No chat history yet</p>
+                      <p className="text-xs">Start a conversation to see it here</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 p-2">
+                      {chatSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          className={`group relative p-3 rounded-lg cursor-pointer transition-colors ${
+                            currentSessionId === session.id
+                              ? 'bg-primary/10 border border-primary/20'
+                              : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => loadSession(session.id)}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium truncate">
+                                {session.title}
+                              </h4>
+                              <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {new Date(session.updated_at).toLocaleDateString()}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {session.message_count} messages
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteSession(session.id)
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Chat Area */}
+            <div className="lg:col-span-3 h-full flex flex-col min-h-0">
+              <Card className="h-full flex flex-col overflow-hidden shadow-lg">
+                <CardHeader className="flex-shrink-0 border-b border-sand-beige/20 pb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
+                      {/* History Toggle for Mobile */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                        className="lg:hidden p-2"
+                      >
+                        <History className="w-4 h-4" />
+                      </Button>
+                      
                       {/* Hamburger Menu for Topics */}
                       <div className="relative">
                         <Button
@@ -482,13 +757,12 @@ export default function ChatPage() {
                                   key={topic.id}
                                   variant={selectedTopic?.id === topic.id ? "default" : "ghost"}
                                   className="w-full justify-start h-auto p-3 text-left"
-                                                                     onClick={() => {
-                                     setSelectedTopic(topic)
-                                     setIsTopicsMenuOpen(false)
-                                     // Reset chat when topic is selected
-                                     setMessages([])
-                                     setCorrections([])
-                                   }}
+                                  onClick={() => {
+                                    setSelectedTopic(topic)
+                                    setIsTopicsMenuOpen(false)
+                                    setMessages([])
+                                    setCorrections([])
+                                  }}
                                 >
                                   <div className="flex items-start space-x-3 w-full">
                                     <topic.icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -523,7 +797,7 @@ export default function ChatPage() {
                         {getLanguageByCode(selectedLanguage).flag} {getLanguageByCode(selectedLanguage).name}
                       </Badge>
                       <Badge variant="outline" className="capitalize">
-                        {conversationLevel}
+                        {selectedLevel}
                       </Badge>
                     </div>
                   </div>
@@ -532,15 +806,24 @@ export default function ChatPage() {
                 {/* Messages */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   {messages.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center p-4">
-                      <div className="text-center">
+                    <div className="flex-1 flex items-center justify-center p-6">
+                      <div className="text-center max-w-md mx-auto">
                         <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-muted-foreground mb-2">
                           Start Your Conversation
                         </h3>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground mb-4">
                           Start chatting with your AI tutor or select a conversation topic from the menu for guided practice.
                         </p>
+                        {!currentSessionId && (
+                          <Button
+                            onClick={createNewSession}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Start New Chat
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -595,7 +878,7 @@ export default function ChatPage() {
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => speakMessage(message.content)} // Only speak the main content, not translation
+                                            onClick={() => speakWithLipSync(message.content)}
                                             className={`h-6 w-6 p-0 ${isVoiceMuted ? 'opacity-50' : ''}`}
                                             title={isVoiceMuted ? 'Voice is muted' : 'Play message'}
                                           >
@@ -735,34 +1018,41 @@ export default function ChatPage() {
             </div>
 
             {/* Right Side - 3D Agent Model and Controls */}
-            <div className="lg:col-span-1 space-y-4">
-              {/* 3D Agent Model Placeholder */}
-              <Card className="h-80">
-                <CardContent className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Bot className="w-12 h-12 text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                      3D Agent Model
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      3D avatar will be deployed here
-                    </p>
+            <div className="lg:col-span-1 space-y-2 h-full overflow-y-auto">
+              {/* 3D Agent Model with Lip-Sync */}
+              <Card className="h-[32rem] shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-center flex items-center justify-center gap-2">
+                    <Brain className="w-4 h-4" />
+                    AI Language Tutor
+                    {isSpeaking && (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-600">Speaking</span>
+                      </div>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[calc(100%-60px)] p-2">
+                  <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50">
+                    <LearningScene 
+                      audio={currentAudio} 
+                      visemes={currentVisemes}
+                    />
                   </div>
                 </CardContent>
               </Card>
 
               {/* Controls Below 3D Agent */}
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {/* Conversation Level */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-semibold">Conversation Level</CardTitle>
+                <Card className="shadow-lg">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Conversation Level</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <Select value={conversationLevel} onValueChange={(value: any) => setConversationLevel(value)}>
-                      <SelectTrigger className="w-full bg-custom-green text-white hover:bg-custom-green/90">
+                  <CardContent className="pt-0">
+                    <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -771,43 +1061,48 @@ export default function ChatPage() {
                         <SelectItem value="advanced">Advanced</SelectItem>
                       </SelectContent>
                     </Select>
-                    
-                    {/* Mute Button beside Conversation Level */}
-                    <div className="mt-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full bg-custom-green text-white hover:bg-custom-green/90 border-custom-green"
-                        onClick={toggleVoiceMute}
-                      >
-                        {isVoiceMuted ? (
-                          <VolumeX className="w-4 h-4 mr-2" />
-                        ) : (
-                          <Volume2 className="w-4 h-4 mr-2" />
-                        )}
-                        {isVoiceMuted ? 'Unmute' : 'Mute'}
-                      </Button>
-                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Mute Control */}
+                <Card className="shadow-lg">
+                  <CardContent className="p-3">
+                    <Button 
+                      variant={isSpeaking ? "destructive" : "outline"} 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => {
+                        if (isSpeaking) {
+                          speechSynthesis.cancel()
+                          setIsSpeaking(false)
+                          setCurrentAudio(null)
+                          setCurrentVisemes(null)
+                        }
+                      }}
+                    >
+                      <Volume2 className="w-4 h-4 mr-2" />
+                      {isSpeaking ? 'Stop Speaking' : 'Mute'}
+                    </Button>
                   </CardContent>
                 </Card>
 
                 {/* Corrections */}
                 {corrections.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                                           <CardTitle className="text-lg font-semibold flex items-center">
-                       <Lightbulb className="w-4 h-4 mr-2 text-custom-green" />
-                       Corrections
-                     </CardTitle>
+                  <Card className="shadow-lg">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-orange-500" />
+                        Corrections
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                                             <div className="space-y-2">
-                         {corrections.map((correction, index) => (
-                           <div key={index} className="p-3 bg-custom-green/10 rounded-xl border border-custom-green/30">
-                             <p className="text-xs text-custom-green">{correction}</p>
-                           </div>
-                         ))}
-                       </div>
+                    <CardContent className="pt-0">
+                      <div className="space-y-1">
+                        {corrections.map((correction, index) => (
+                          <div key={index} className="text-xs bg-orange-50 border border-orange-200 rounded p-2">
+                            {correction}
+                          </div>
+                        ))}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
@@ -816,6 +1111,9 @@ export default function ChatPage() {
           </div>
         </div>
       </main>
+
+      {/* Hidden Audio Element */}
+      <audio ref={audioRef} style={{ display: 'none' }} crossOrigin="anonymous" />
     </div>
   )
 } 

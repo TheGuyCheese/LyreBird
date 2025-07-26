@@ -232,7 +232,7 @@ export default function EventsPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cream-white to-sand-beige flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#B9B38F'}}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg text-muted-foreground">Loading your learning events...</p>
@@ -242,7 +242,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream-white to-sand-beige">
+    <div className="min-h-screen" style={{backgroundColor: '#B9B38F'}}>
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-sand-beige/20 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -252,7 +252,7 @@ export default function EventsPage() {
                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <span className="text-xl font-bold text-primary">LinguaLearn</span>
+                <span className="text-xl font-bold text-primary">LyreBird</span>
               </div>
               
               <nav className="hidden md:flex space-x-6">
