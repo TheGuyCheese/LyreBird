@@ -131,7 +131,7 @@ This project uses 3D avatars for user interaction. The models are located in the
 
 ## Retrieval-Augmented Generation (RAG)
 
-The RAG implementation enhances the chatbot's capabilities by providing it with external knowledge. It works by:
+The RAG implementation enhances the chatbot's capabilities by providing it with external knowledge. The steps are outlined in `rag steps.md` and implemented in `src/lib/rag.ts` and `src/lib/vector-rag.ts`. It works by:
 
 1.  Taking a user's query.
 2.  Converting the query into a vector embedding.
@@ -140,5 +140,4 @@ The RAG implementation enhances the chatbot's capabilities by providing it with 
 5.  Returning a more informed and accurate response to the user.
 
 ## License
-
 This project is licensed under the terms of the MIT LICENSE file. Please see the `LICENSE` file for more details.
