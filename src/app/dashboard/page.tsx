@@ -118,9 +118,6 @@ export default function Dashboard() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
   const [selectedLanguage, setSelectedLanguage] = useState('es')
-  const [selectedObject, setSelectedObject] = useState<any>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [activeTab, setActiveTab] = useState('learn')
   const [progress, setProgress] = useState(65)
   const [streak, setStreak] = useState(12)
   const [points, setPoints] = useState(2840)
@@ -131,10 +128,7 @@ export default function Dashboard() {
     }
   }, [user, isLoaded, router])
 
-  const handleObjectClick = (obj: any) => {
-    setSelectedObject(obj)
-    setPoints(prev => prev + 10)
-  }
+
 
   const speakWord = (word: string) => {
     if ('speechSynthesis' in window) {
@@ -145,9 +139,7 @@ export default function Dashboard() {
     }
   }
 
-  const getTranslation = (objectId: string) => {
-    return translations[objectId]?.[selectedLanguage] || objectId
-  }
+
 
   if (!isLoaded) {
     return (
@@ -168,9 +160,11 @@ export default function Dashboard() {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-primary-foreground" />
-                </div>
+                <img 
+                  src="/logo.ico" 
+                  alt="LyreBird Logo" 
+                  className="w-10 h-10 rounded-full object-cover"
+                />
                 <span className="text-xl font-bold text-primary">LyreBird</span>
               </div>
               
@@ -217,9 +211,9 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Sidebar - Stats */}
-          <div className="space-y-6">
+          <div className="lg:col-span-1 space-y-6">
             <Card className="overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Learning Progress</CardTitle>
@@ -312,7 +306,7 @@ export default function Dashboard() {
           </div>
 
           {/* Main Content - 3D Learning */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-xl">Interactive Learning Environment</CardTitle>
@@ -321,86 +315,15 @@ export default function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-96 bg-gradient-to-br from-blue-50 to-purple-50">
+                <div className="h-[500px] bg-gradient-to-br from-blue-50 to-purple-50">
                   <InteractiveObjectsScene
                     selectedLanguage={selectedLanguage}
-                    onObjectClick={handleObjectClick}
-                    selectedObject={selectedObject}
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Object Details */}
-            {selectedObject && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid md:grid-cols-2 gap-6"
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>Learning: {selectedObject.name}</span>
-                      <Badge variant="outline">+10 XP</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <div className="text-4xl font-bold text-primary mb-2">
-                          {getTranslation(selectedObject.id)}
-                        </div>
-                        <div className="text-lg text-muted-foreground">
-                          {selectedObject.name}
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-center space-x-2">
-                        <Button
-                          onClick={() => speakWord(getTranslation(selectedObject.id))}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          <Volume2 className="w-4 h-4 mr-2" />
-                          Pronounce
-                        </Button>
-                        <Button variant="outline">
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          Practice
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Quick Practice</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          How do you say "{selectedObject.name}" in {getLanguageByCode(selectedLanguage).name}?
-                        </p>
-                        <div className="text-2xl font-bold text-primary">
-                          {getTranslation(selectedObject.id)}
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <Button className="flex-1 bg-green-500 hover:bg-green-600">
-                          I know this!
-                        </Button>
-                        <Button variant="outline" className="flex-1">
-                          Study more
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
 
             {/* Quick Actions */}
             <div className="grid md:grid-cols-3 gap-4">

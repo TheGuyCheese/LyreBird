@@ -150,9 +150,11 @@ export default function LandingPage() {
       <nav className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
-              <Brain className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <img 
+              src="/logo.ico" 
+              alt="LyreBird Logo" 
+              className="w-12 h-12 rounded-full object-cover"
+            />
             <span className="text-2xl font-bold text-primary">LyreBird</span>
           </div>
           
@@ -197,10 +199,12 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </SignUpButton>
+            <a href="https://github.com/dinasquare/LyreBird" target="_blank">
             <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground text-lg px-8 py-4">
               <Play className="mr-2 w-5 h-5" />
               Watch Demo
             </Button>
+            </a>
           </div>
 
           {/* Stats */}
@@ -434,7 +438,7 @@ export default function LandingPage() {
           </div>
           
           <div className="border-t border-cream-white/20 mt-8 pt-8 text-center text-cream-white/60">
-            <p>&copy; 2024 LyreBird. All rights reserved.</p>
+            <p>&copy; 2025 LyreBird. All rights reserved.</p>
           </div>
         </div>
       </footer>

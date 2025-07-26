@@ -140,5 +140,4 @@ The RAG implementation enhances the chatbot's capabilities by providing it with 
 5.  Returning a more informed and accurate response to the user.
 
 ## License
-
-This project is licensed under the terms of the LICENSE file. Please see the `LICENSE` file for more details.
+This project is licensed under the terms of the MIT LICENSE file. Please see the `LICENSE` file for more details.

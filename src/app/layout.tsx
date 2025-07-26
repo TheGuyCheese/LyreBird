@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   description: 'Learn languages interactively with AI-powered conversations, 3D models, and gamified learning experiences.',
   keywords: ['language learning', 'AI chat', 'interactive learning', 'flashcards', 'quizzes'],
   authors: [{ name: 'LyreBird Team' }],
+  icons: {
+    icon: '/logo.ico',
+    shortcut: '/logo.ico',
+    apple: '/logo.ico',
+  },
   openGraph: {
     title: 'LyreBird - Master Languages with AI',
     description: 'Learn languages interactively with AI-powered conversations, 3D models, and gamified learning experiences.',
