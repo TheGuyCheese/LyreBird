@@ -533,9 +533,11 @@ export default function ChatPage() {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-primary-foreground" />
-                </div>
+                <img 
+                  src="/logo.ico" 
+                  alt="LyreBird Logo" 
+                  className="w-10 h-10 rounded-full object-cover"
+                />
                 <span className="text-xl font-bold text-primary">LyreBird</span>
               </div>
               

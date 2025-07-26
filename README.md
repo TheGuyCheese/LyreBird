@@ -1,122 +1,144 @@
-# LyreBird - AI-Powered Language Learning Platform
+<h1>
+  <a href="https://github.com/your-username/lyrebird">
+    <img src="https://raw.githubusercontent.com/velcorum/test2/refs/heads/main/WhatsApp%20Image%202025-07-26%20at%2014.14.11_997e1017.jpg" alt="Author" width="50" style="border-radius: 50%; margin-right: 15px; vertical-align: middle;"/>
+  </a>
+  LyreBird: 3D Interactive AI Chatbot
+</h1>
 
-A modern, interactive language learning web application built with Next.js 14, featuring AI-powered conversations, 3D interactive learning, and gamified progress tracking.
+LyreBird is an innovative 3D interactive chatbot application built with Next.js, React Three Fiber, and Google's Generative AI. It provides an immersive experience where users can interact with a 3D avatar in a virtual environment, engage in intelligent conversations, and experience real-time speech-to-text and text-to-speech functionalities. The project leverages Retrieval-Augmented Generation (RAG) with a Supabase vector database to provide more context-aware and accurate responses.
 
-## 🌟 Features
+## Features
 
-### 🎯 Core Features
-- **AI-Powered Conversations**: Chat with an intelligent AI tutor using Google's Gemini API
-- **Interactive 3D Learning**: Explore 3D models and learn vocabulary in an immersive environment
-- **Smart Flashcards**: Adaptive flashcard system with spaced repetition
-- **Gamified Quizzes**: Interactive quizzes with real-time feedback
-- **Progress Tracking**: Detailed analytics and achievement system
-- **Multi-Language Support**: Spanish, French, German, and more
+-   **3D Interactive Environment**: Built with React Three Fiber (`@react-three/fiber`) and Drei, allowing users to interact with a 3D world.
+-   **AI Chatbot**: Powered by the Google Generative AI (`@google/generative-ai`) for intelligent and natural conversations.
+-   **Speech Recognition & Synthesis**: Integrates real-time speech-to-text using `react-speech-recognition` and realistic text-to-speech using the ElevenLabs API.
+-   **Retrieval-Augmented Generation (RAG)**: Enhances chatbot responses by retrieving relevant information from a Supabase PostgreSQL vector database.
+-   **Chat History**: Stores and retrieves conversation history for persistent user sessions.
+-   **Customizable 3D Avatars**: Supports `.vrm` and `.glb` avatar formats for a personalized experience.
+-   **Modern UI/UX**: Built with Next.js 13+ (App Router), TypeScript, and styled with Tailwind CSS and shadcn/ui components.
+-   **Dashboard and Event Pages**: Includes additional pages for user dashboards and event information.
 
-### 🎨 UI/UX Features
-- **Beautiful Design**: Modern, clean interface with custom color scheme
-- **Responsive Layout**: Works perfectly on all devices
-- **Smooth Animations**: Framer Motion animations for enhanced UX
-- **Voice Integration**: Text-to-speech and speech-to-text capabilities
-- **Dark/Light Mode**: Adaptive theme system
+## Technologies Used
 
-### 🔐 Authentication & Security
-- **Clerk Authentication**: Secure user management with social login
-- **Protected Routes**: Middleware-based route protection
-- **User Profiles**: Personalized learning experience
+| Category              | Technology                                                              |
+| :-------------------- | :---------------------------------------------------------------------- |
+| **Frontend** | Next.js, React, TypeScript, Tailwind CSS                                |
+| **3D Graphics** | React Three Fiber, Drei, Three.js                                       |
+| **AI & ML** | Google Generative AI (for chat), ElevenLabs API (for text-to-speech)    |
+| **Backend** | Next.js API Routes                                                      |
+| **Database** | Supabase (PostgreSQL with pgvector for RAG)                             |
+| **UI Components** | shadcn/ui                                                               |
+| **Speech Recognition**| `react-speech-recognition`                                              |
 
-## 🚀 Tech Stack
+## Getting Started
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: Shadcn/UI + Radix UI
-- **Authentication**: Clerk
-- **AI Integration**: Google Gemini API
-- **3D Graphics**: Three.js with React Three Fiber
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **State Management**: Zustand
-- **Database**: (Ready for integration)
+Follow these instructions to set up and run the project locally.
 
+### Prerequisites
 
-## 📱 Usage
+-   Node.js (v18.x or later)
+-   npm, yarn, or pnpm
+-   A Supabase account for the database and vector store.
+-   API keys for Google Generative AI and ElevenLabs.
 
-### Landing Page
-- Modern design
-- Feature showcase with animations
-- User testimonials and statistics
-- Call-to-action buttons for sign-up
+### Environment Variables
 
-### Dashboard
-- Interactive 3D learning environment
-- Click on 3D objects to learn vocabulary
-- Progress tracking with streaks and points
-- Daily goals and achievements
-- Quick access to all features
+Create a `.env.local` file in the root of the project and add the following environment variables. You can get the Supabase URL and anon key from your Supabase project dashboard.
 
-### Events Page
-- **Flashcards**: Interactive flashcard system with spaced repetition
-- **Quizzes**: Multiple-choice quizzes with instant feedback
-- **Progress Tracking**: Real-time statistics and performance analytics
-- **Difficulty Levels**: Beginner to advanced content
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-### AI Chat
-- **Conversation Topics**: Structured learning paths
-- **AI Tutor**: Powered by Google Gemini AI
-- **Real-time Corrections**: Grammar and vocabulary feedback
-- **Voice Integration**: Speech-to-text and text-to-speech
-- **Multiple Languages**: Support for various target languages
+# Google Generative AI
+GOOGLE_API_KEY=your_google_api_key
 
+# ElevenLabs API
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+```
 
+### Installation
 
-## 🌍 Supported Languages
+1.  Clone the repository:
+    ```bash
+    git clone [https://github.com/your-username/lyrebird.git](https://github.com/your-username/lyrebird.git)
+    cd lyrebird
+    ```
 
-- 🇪🇸 Spanish
-- 🇫🇷 French
-- 🇩🇪 German
-- 🇮🇹 Italian
-- 🇵🇹 Portuguese
-- 🇷🇺 Russian
-- 🇯🇵 Japanese
-- 🇰🇷 Korean
-- 🇨🇳 Chinese
-- 🇸🇦 Arabic
+2.  Install the dependencies:
+    ```bash
+    npm install
+    # or
+    yarn install
+    # or
+    pnpm install
+    ```
 
+### Running the Application
 
-## 📊 Performance
+To start the development server, run the following command:
 
-- **Lighthouse Score**: 90+ across all metrics
-- **Core Web Vitals**: Optimized for excellent user experience
-- **Bundle Size**: Optimized with tree-shaking and code splitting
-- **Loading Speed**: Fast initial load with progressive enhancement
+```bash
+npm run dev
+```
 
-## 🔒 Security
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-- **Authentication**: Secure user sessions with Clerk
-- **API Protection**: Rate limiting and input validation
-- **Data Privacy**: No sensitive data stored locally
-- **CORS**: Properly configured for production
+## Project Structure
 
-## 🤝 Contributing
+The project follows the standard Next.js App Router structure.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```
+.
+├── public/
+│   └── avatars/         # 3D avatar models (.vrm, .glb)
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── chat/    # API routes for chat and history
+│   │   │   └── speech/  # API route for text-to-speech
+│   │   ├── chat/        # Chat page UI
+│   │   ├── dashboard/   # Dashboard page UI
+│   │   ├── events/      # Events page UI
+│   │   ├── layout.tsx   # Root layout
+│   │   └── page.tsx     # Main application page with 3D scene
+│   ├── components/
+│   │   ├── ui/          # Reusable UI components (shadcn/ui)
+│   │   ├── InteractiveObjectsScene.tsx
+│   │   └── LearningScene.tsx
+│   └── lib/
+│       ├── rag.ts       # RAG implementation logic
+│       ├── supabase.ts  # Supabase client configuration
+│       ├── utils.ts     # Utility functions
+│       └── vector-rag.ts # RAG logic using vector search
+├── next.config.js
+├── package.json
+└── tailwind.config.js
+```
 
-## 📄 License
+## API Endpoints
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The application uses Next.js API Routes to handle backend logic.
 
-## 🙏 Acknowledgments
+-   `POST /api/chat`: Handles incoming chat messages, processes them with Google Generative AI (and optionally RAG), and returns the AI's response.
+-   `GET /api/chat/history`: Fetches all chat session histories.
+-   `GET /api/chat/history/[sessionId]`: Fetches the chat history for a specific session.
+-   `POST /api/speech`: Takes text as input and returns an audio stream from the ElevenLabs text-to-speech API.
 
-- **Next.js Team** for the amazing framework
-- **Clerk** for authentication services
-- **Google** for the Gemini AI API
-- **Shadcn** for the beautiful UI components
-- **Vercel** for deployment platform
+## 3D Avatars
 
----
+This project uses 3D avatars for user interaction. The models are located in the `public/avatars/` directory. You can add your own `.vrm` or `.glb` files to this directory and load them within the 3D scenes.
 
-**Happy Learning! 🎉** 
+## Retrieval-Augmented Generation (RAG)
+
+The RAG implementation enhances the chatbot's capabilities by providing it with external knowledge. It works by:
+
+1.  Taking a user's query.
+2.  Converting the query into a vector embedding.
+3.  Searching the Supabase vector database for relevant documents.
+4.  Passing the retrieved documents along with the original query to the Google Generative AI model as context.
+5.  Returning a more informed and accurate response to the user.
+
+## License
+
+This project is licensed under the terms of the MIT LICENSE file. Please see the `LICENSE` file for more details.
