@@ -1,6 +1,6 @@
 <h1>
   <a href="https://github.com/your-username/lyrebird">
-    <img src="https://raw.githubusercontent.com/velcorum/test2/refs/heads/main/WhatsApp%20Image%202025-07-26%20at%2014.14.11_997e1017.jpg" alt="Author" width="50" style="border-radius: 50%; margin-right: 15px; vertical-align: middle;"/>
+    <img src="https://raw.githubusercontent.com/dinasquare/LyreBird/refs/heads/main/public/logo.ico" alt="Author" width="50" style="border-radius: 50%; margin-right: 15px; vertical-align: middle;"/>
   </a>
   LyreBird: 3D Interactive AI Chatbot
 </h1>
